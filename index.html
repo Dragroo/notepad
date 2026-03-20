@@ -331,6 +331,9 @@
         <div class="header-left">
             <span class="logo">📝 Markdown 编辑器</span>
             <div class="toolbar">
+                <button onclick="undo()" title="撤销 (Ctrl+Z)">↩</button>
+                <button onclick="redo()" title="重做 (Ctrl+Y)">↪</button>
+                <div class="separator"></div>
                 <button onclick="insertText('**', '**')" title="加粗"><i>B</i></button>
                 <button onclick="insertText('*', '*')" title="斜体"><i>I</i></button>
                 <button onclick="insertText('~~', '~~')" title="删除线">S</button>
@@ -392,6 +395,88 @@
         const preview = document.getElementById('preview');
         const mainContainer = document.getElementById('mainContainer');
 
+        // Undo/Redo 历史记录管理
+        const history = {
+            stack: [],
+            index: -1,
+            maxSize: 100,
+            isUndoing: false,
+            lastSaveTime: 0,
+            saveDelay: 300
+        };
+
+        // 保存当前状态到历史记录
+        function saveHistory() {
+            if (history.isUndoing) return;
+            
+            const now = Date.now();
+            if (now - history.lastSaveTime < history.saveDelay) return;
+            
+            const state = {
+                content: editor.value,
+                cursor: editor.selectionStart,
+                timestamp: now
+            };
+            
+            // 如果内容没有变化，不保存
+            if (history.index >= 0 && history.stack[history.index].content === state.content) {
+                return;
+            }
+            
+            // 删除当前索引之后的历史记录
+            history.stack = history.stack.slice(0, history.index + 1);
+            
+            // 添加新状态
+            history.stack.push(state);
+            history.index++;
+            
+            // 限制历史记录大小
+            if (history.stack.length > history.maxSize) {
+                history.stack.shift();
+                history.index--;
+            }
+            
+            history.lastSaveTime = now;
+            updateUndoRedoButtons();
+        }
+
+        // 撤销
+        function undo() {
+            if (history.index > 0) {
+                history.isUndoing = true;
+                history.index--;
+                const state = history.stack[history.index];
+                editor.value = state.content;
+                editor.setSelectionRange(state.cursor, state.cursor);
+                updatePreview();
+                updateUndoRedoButtons();
+                history.isUndoing = false;
+            }
+        }
+
+        // 重做
+        function redo() {
+            if (history.index < history.stack.length - 1) {
+                history.isUndoing = true;
+                history.index++;
+                const state = history.stack[history.index];
+                editor.value = state.content;
+                editor.setSelectionRange(state.cursor, state.cursor);
+                updatePreview();
+                updateUndoRedoButtons();
+                history.isUndoing = false;
+            }
+        }
+
+        // 更新撤销/重做按钮状态
+        function updateUndoRedoButtons() {
+            const undoBtn = document.querySelector('button[onclick="undo()"]');
+            const redoBtn = document.querySelector('button[onclick="redo()"]');
+            
+            if (undoBtn) undoBtn.style.opacity = history.index > 0 ? '1' : '0.3';
+            if (redoBtn) redoBtn.style.opacity = history.index < history.stack.length - 1 ? '1' : '0.3';
+        }
+
         // 配置 marked
         marked.setOptions({
             highlight: function(code, lang) {
@@ -411,8 +496,24 @@
             updateStatus();
         }
 
-        editor.addEventListener('input', updatePreview);
+        editor.addEventListener('input', function() {
+            updatePreview();
+            saveHistory();
+        });
         editor.addEventListener('scroll', syncScroll);
+
+        // 键盘快捷键
+        editor.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    undo();
+                } else if ((e.key === 'y') || (e.key === 'z' && e.shiftKey)) {
+                    e.preventDefault();
+                    redo();
+                }
+            }
+        });
 
         // 同步滚动
         function syncScroll() {
@@ -510,7 +611,9 @@
         });
 
         // 初始化
+        saveHistory(); // 保存初始状态
         updatePreview();
+        updateUndoRedoButtons();
         editor.focus();
     </script>
 </body>
