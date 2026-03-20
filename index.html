@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线记事本</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .toolbar {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .toolbar button {
+            padding: 8px 16px;
+            border: 1px solid #dee2e6;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .toolbar button:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .toolbar button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .toolbar select {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .toolbar .separator {
+            width: 1px;
+            height: 24px;
+            background: #dee2e6;
+            margin: 0 5px;
+        }
+
+        .info {
+            margin-left: auto;
+            font-size: 13px;
+            color: #6c757d;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 500px;
+            padding: 20px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            line-height: 1.8;
+            resize: vertical;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 15px;
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            textarea {
+                min-height: 400px;
+                padding: 15px;
+            }
+            
+            .toolbar {
+                padding: 10px;
+            }
+            
+            .toolbar button {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>📝 在线记事本</h1>
+    
+    <div class="container">
+        <div class="toolbar">
+            <button onclick="formatText('bold')" title="加粗"><b>B</b></button>
+            <button onclick="formatText('italic')" title="斜体"><i>I</i></button>
+            <button onclick="formatText('underline')" title="下划线"><u>U</u></button>
+            <div class="separator"></div>
+            <select onchange="changeFontSize(this.value)">
+                <option value="14">小</option>
+                <option value="16" selected>中</option>
+                <option value="18">大</option>
+                <option value="20">特大</option>
+            </select>
+            <div class="separator"></div>
+            <button onclick="clearText()">清空</button>
+            <button onclick="copyText()">复制全部</button>
+            <span class="info">字数: <span id="charCount">0</span></span>
+        </div>
+        
+        <textarea id="notepad" placeholder="在这里开始输入..."></textarea>
+    </div>
+    
+    <div class="footer">
+        内容不会自动保存，刷新页面后内容将丢失
+    </div>
+
+    <script>
+        const textarea = document.getElementById('notepad');
+        const charCount = document.getElementById('charCount');
+
+        // 更新字数统计
+        function updateCount() {
+            charCount.textContent = textarea.value.length;
+        }
+
+        textarea.addEventListener('input', updateCount);
+
+        // 格式化文本（在光标处插入标记）
+        function formatText(type) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+            
+            if (selectedText) {
+                let formattedText;
+                switch(type) {
+                    case 'bold':
+                        formattedText = `**${selectedText}**`;
+                        break;
+                    case 'italic':
+                        formattedText = `*${selectedText}*`;
+                        break;
+                    case 'underline':
+                        formattedText = `_${selectedText}_`;
+                        break;
+                }
+                
+                textarea.value = textarea.value.substring(0, start) + formattedText + textarea.value.substring(end);
+                textarea.focus();
+                textarea.setSelectionRange(start + formattedText.length, start + formattedText.length);
+                updateCount();
+            }
+        }
+
+        // 改变字体大小
+        function changeFontSize(size) {
+            textarea.style.fontSize = size + 'px';
+        }
+
+        // 清空文本
+        function clearText() {
+            if (textarea.value && confirm('确定要清空所有内容吗？')) {
+                textarea.value = '';
+                updateCount();
+                textarea.focus();
+            }
+        }
+
+        // 复制全部内容
+        function copyText() {
+            textarea.select();
+            document.execCommand('copy');
+            
+            // 恢复光标位置
+            const len = textarea.value.length;
+            textarea.setSelectionRange(len, len);
+            
+            // 显示提示
+            const originalText = event.target.textContent;
+            event.target.textContent = '已复制!';
+            setTimeout(() => {
+                event.target.textContent = originalText;
+            }, 1500);
+        }
+
+        // 自动聚焦
+        textarea.focus();
+    </script>
+</body>
+</html>
