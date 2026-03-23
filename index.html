@@ -346,6 +346,7 @@
                 <button onclick="insertText('[', '](url)')" title="链接">🔗</button>
                 <button onclick="insertText('![alt](', ')')" title="图片">🖼</button>
                 <button onclick="insertText('---\n', '')" title="分割线">—</button>
+                                <button onclick="insertTable()" title="表格">▦</button>
             </div>
         </div>
         <div class="header-right">
@@ -486,7 +487,9 @@
                 return hljs.highlightAuto(code).value;
             },
             breaks: true,
-            gfm: true
+            gfm: true,
+            tables: true,
+            headerIds: false
         });
 
         // 实时预览
@@ -534,6 +537,41 @@
             const newCursorPos = selectedText ? start + replacement.length : start + before.length;
             editor.setSelectionRange(newCursorPos, newCursorPos);
             updatePreview();
+            saveHistory();
+        }
+
+        // 插入表格
+        function insertTable() {
+            const rows = prompt('请输入表格行数:', '3');
+            if (!rows) return;
+            const cols = prompt('请输入表格列数:', '3');
+            if (!cols) return;
+            
+            const r = parseInt(rows);
+            const c = parseInt(cols);
+            
+            if (r <= 0 || c <= 0 || isNaN(r) || isNaN(c)) {
+                alert('请输入有效的数字');
+                return;
+            }
+            
+            let table = '\n';
+            // 表头
+            table += '|' + ' 标题 |'.repeat(c) + '\n';
+            // 分隔符
+            table += '|' + ' --- |'.repeat(c) + '\n';
+            // 数据行
+            for (let i = 0; i < r - 1; i++) {
+                table += '|' + ' 内容 |'.repeat(c) + '\n';
+            }
+            table += '\n';
+            
+            const start = editor.selectionStart;
+            editor.value = editor.value.substring(0, start) + table + editor.value.substring(start);
+            editor.focus();
+            editor.setSelectionRange(start + table.length, start + table.length);
+            updatePreview();
+            saveHistory();
         }
 
         // 切换模式
